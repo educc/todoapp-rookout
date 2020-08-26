@@ -1,0 +1,84 @@
+buildscript {
+    ext {
+        springBootVersion = '2.2.6.RELEASE'
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+
+apply plugin: 'application'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+mainClassName = "com.rookout.tutorial.TutorialApplication"
+
+group = 'com.rookout'
+version = '1.0.0'
+sourceCompatibility = 8
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    compile('io.joshworks.unirest:unirest-java:1.6.0')
+    compile('org.springframework.boot:spring-boot-starter-web')
+
+    // Specific dependencies for fixing different vulnerabilities
+    compile("org.hibernate.validator:hibernate-validator:6.1.3.Final")
+    compile("org.springframework:spring-webmvc:5.2.6.RELEASE")
+    compile("org.springframework:spring-web:5.2.6.RELEASE")
+    compile("org.apache.tomcat.embed:tomcat-embed-core:9.0.35")
+    compile("org.yaml:snakeyaml:1.26")
+
+    implementation 'com.bugsnag:bugsnag-spring:3.+'
+    compile("io.sentry:sentry:1.7.30")
+    compile("io.logz.logback:logzio-logback-appender:1.0.24")
+    compile group: 'org.codehaus.janino', name: 'janino', version: '3.0.16'
+    
+    // tracing support
+    compile group: 'io.opentracing.contrib', name: 'opentracing-spring-jaeger-web-starter', version: '3.1.2'
+
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+    testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')
+}
+
+
+class Download extends DefaultTask {
+    @Input
+    String sourceUrl
+
+    @OutputFile
+    File target
+
+    @TaskAction
+    void download() {
+       ant.get(src: sourceUrl, dest: target)
+    }
+}
+
+//curl -L "https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=com.rookout&a=rook&v=LATEST" -o rook.jar
+task downloadRookout(type: Download) {
+    sourceUrl = "https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=com.rookout&a=rook&v=0.1.128"
+    target = new File('rook.jar')
+}
+
+// bootJar is added by spring + java plugin, it creates a fat jar, we add the source files
+// https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/html/#reacting-to-other-plugins-java
+bootJar {
+    from sourceSets.main.allSource
+}
+
+//bootJar.dependsOn downloadRookout
+
+run {
+    jvmArgs += ["-javaagent:rook.jar"]
+}
